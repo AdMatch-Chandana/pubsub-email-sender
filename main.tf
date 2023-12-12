@@ -8,8 +8,8 @@ resource "google_storage_bucket" "function_bucket" {
 
 data "archive_file" "source" {
   type        = "zip"
-  source_dir  = "./src"
-  output_path = "./tmp/function.zip"
+  source_dir  = "src"
+  output_path = "tmp/function.zip"
   excludes    = ["build"]
 }
 
