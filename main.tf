@@ -8,7 +8,7 @@ resource "google_storage_bucket" "function_bucket" {
 
 data "archive_file" "source" {
   type        = "zip"
-  source_dir  = "src"
+  source_dir  = "${path.module}/src"
   output_path = "tmp/function.zip"
   excludes    = [""]
 }
@@ -40,7 +40,6 @@ resource "google_cloudfunctions_function" "send_email_function" {
     }
   }
   environment_variables = {
-    "PATH" = var.path
     "EMAIL_RECEIVERS" = join(",",var.email_receivers)
     "SUBJECT" = var.email_subject
     "CONTENT" = var.email_content

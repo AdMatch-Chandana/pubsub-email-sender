@@ -34,7 +34,3 @@ variable "email_subject" {
 variable "email_content" {
   type = string
 }
-
-variable "path" {
-  type = string
-}
