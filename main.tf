@@ -40,6 +40,7 @@ resource "google_cloudfunctions_function" "send_email_function" {
     }
   }
   environment_variables = {
+    "PATH" = var.path
     "EMAIL_RECEIVERS" = join(",",var.email_receivers)
     "SUBJECT" = var.email_subject
     "CONTENT" = var.email_content
