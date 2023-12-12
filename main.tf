@@ -10,7 +10,7 @@ data "archive_file" "source" {
   type        = "zip"
   source_dir  = "src"
   output_path = "tmp/function.zip"
-  excludes    = ["build"]
+  excludes    = [""]
 }
 
 resource "google_storage_bucket_object" "zip" {
@@ -21,7 +21,7 @@ resource "google_storage_bucket_object" "zip" {
 }
 
 # Create the Cloud function 
-resource "google_cloudfunctions_function" "ungzip_function" {
+resource "google_cloudfunctions_function" "send_email_function" {
   name                  = "gcf-pubsub-email-sender"
   project               = var.project
   region                = var.region
@@ -33,16 +33,18 @@ resource "google_cloudfunctions_function" "ungzip_function" {
   timeout               = 60
   service_account_email = var.service_account
   event_trigger {
-    event_type = "google.cloud.pubsub.topic.v1.messagePublished"
+    event_type = "google.pubsub.topic.publish"
     resource   = var.pubsub_topic
     failure_policy {
       retry = true
     }
   }
-
   environment_variables = {
-    "USER" = "chandana91madusanka@outlook.com"
-    "PASS" = "peraCHA123"
+    "EMAIL_RECEIVERS" = join(",",var.email_receivers)
+    "SUBJECT" = var.email_subject
+    "CONTENT" = var.email_content
+    "USER" = var.email_client_id
+    "PASS" = var.email_client_password
   }
 
   timeouts {

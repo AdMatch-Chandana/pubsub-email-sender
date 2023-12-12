@@ -9,11 +9,6 @@
 const nodemailer = require('nodemailer');
 
 exports.SendEmail = (event, context) => {
-  const message = event.data
-    ? Buffer.from(event.data, 'base64').toString()
-    : 'Hello, World';
-  console.log(message);
-
 const transporter = nodemailer.createTransport({
   service: 'hotmail',
   auth: {
@@ -25,9 +20,9 @@ const transporter = nodemailer.createTransport({
 // Email content
 const mailOptions = {
   from: process.env.USER,
-  to: 'chandana91madusanka@gmail.com',
-  subject: 'Subject of the email',
-  text: 'Hello, this is the body of the email!'
+  to: process.env.EMAIL_RECEIVERS,
+  subject: process.env.SUBJECT,
+  text: process.env.CONTENT
 };
 
 // Send email
