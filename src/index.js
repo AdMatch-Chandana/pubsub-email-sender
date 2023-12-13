@@ -8,7 +8,20 @@
  */
 const nodemailer = require('nodemailer');
 
+const { Logger, pino } = require('pino');
+const {gcpLogOptions}  = require('pino-cloud-logging');
+
 exports.SendEmail = (event, context) => {
+
+  const logger = pino(gcpLogOptions(
+    {
+        level: "info",
+        name: 'Sample Alert'
+    }
+));
+
+logger.info(event)
+
 const transporter = nodemailer.createTransport({
   service: 'hotmail',
   auth: {
