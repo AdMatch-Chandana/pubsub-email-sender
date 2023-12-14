@@ -1,11 +1,17 @@
-{
-    "name": "sample-pubsub",
+  {
+    "name": "pubsub-send-emails",
     "version": "0.0.1",
+    "scripts": {
+      "gcp-build": "npm run build",
+      "build": "tsc"
+    },
     "dependencies": {
-      "@google-cloud/pubsub": "^0.18.0",
+      "@google-cloud/functions-framework": "^3.3.0",
+      "typescript": "^5.3.3",
       "nodemailer": "^6.9.1",
-       "pino": "^8.15.0",
-       "pino-cloud-logging": "^1.0.6"
-    }
+      "pino": "^8.15.0",
+      "pino-cloud-logging": "^1.0.6"
+    },
+    "main": "build/index.js"
   }
   

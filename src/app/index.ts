@@ -6,14 +6,35 @@
  * 
  * 
  */
-const nodemailer = require('nodemailer');
+import * as nodemailer from 'nodemailer';
+import { Logger, pino } from 'pino';
+import { gcpLogOptions } from 'pino-cloud-logging';
 
-const { Logger, pino } = require('pino');
-const { gcpLogOptions } = require('pino-cloud-logging');
+interface ErrorLogEntry {
+  errorDetails: string[];
+  url: string;
+}
 
-exports.SendEmail = (event, context) => {
+interface ErrorBreakdown {
+  errorCount: number;
+  errorCode: string;
+  errorLogEntries: ErrorLogEntry[];
+}
 
-  let pubsubType = ""
+interface ParsedData {
+  state?: string;
+  status?: string;
+  destinationDatasetId?: string;
+  errorStatus: {
+    message: string;
+    code: string;
+  };
+  errorBreakdowns: ErrorBreakdown[];
+}
+
+exports.SendEmail = (event: any, context: any) => {
+
+  let pubsubType = "";
 
   const logger = pino(gcpLogOptions(
     {
@@ -22,30 +43,29 @@ exports.SendEmail = (event, context) => {
     }
   ));
 
-  logger.info(event)
-  logger.error(event.data)
-
+  logger.info(event);
+  logger.error(event.data);
 
   const decodedData = Buffer.from(event.data, 'base64').toString('utf-8');
-  const parsedData = JSON.parse(decodedData);
+  const parsedData: ParsedData = JSON.parse(decodedData);
 
-  logger.info(parsedData)
+  logger.info(parsedData);
 
   const status = parsedData.state || parsedData.status;
-  let htmlContent;
-  if (status != 'FAILED') {
+  let htmlContent = "";
+  if (status !== 'FAILED') {
     return;
   }
 
   if (parsedData.destinationDatasetId) {
-    pubsubType = "bqDataTransfer"
+    pubsubType = "bqDataTransfer";
     htmlContent = `
     <p><b>Error Status:</b></p>
     <p><b>Message:</b> ${parsedData.errorStatus.message}</p>
     <p><b>Code:</b> ${parsedData.errorStatus.code}</p>
-  `
+  `;
   } else {
-    pubsubType = "s3ToGcs"
+    pubsubType = "s3ToGcs";
     parsedData.errorBreakdowns.forEach((errorBreakdown, index) => {
       // Add information about each error breakdown to the HTML content
       htmlContent += `
@@ -76,9 +96,9 @@ exports.SendEmail = (event, context) => {
   });
 
   // Email content
-  const mailOptions = {
+  const mailOptions: nodemailer.SendMailOptions = {
     from: "thilhani91senavirathne@outlook.com",
-    to: process.env.EMAIL_RECEIVERS,
+    to: process.env.EMAIL_RECEIVERS as string,
     subject: pubsubType === "bqDataTransfer" ? "Failed to Load data into bigquery" : "Failed to load data from S3 to GCS",
     html: htmlContent
   };
