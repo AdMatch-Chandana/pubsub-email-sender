@@ -41,8 +41,8 @@ resource "google_cloudfunctions_function" "send_email_function" {
   }
   environment_variables = {
     "EMAIL_RECEIVERS" = join(",",var.email_receivers)
-    "USER" = var.email_client_id
-    "PASS" = var.email_client_password
+    "EMAIL_CLIENT_ID" = var.email_client_id
+    "EMAIL_CLIENT_PASSWORD" = var.email_client_password
   }
 
   timeouts {
