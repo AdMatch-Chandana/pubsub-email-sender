@@ -51,9 +51,9 @@ exports.SendEmail = (event: any, context: any) => {
   // Send email
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      console.error(error);
+      logger.error(error);
     } else {
-      console.log('Email sent: ' + info.response);
+      logger.info('Email sent: ' + info.response);
     }
   });
 };
