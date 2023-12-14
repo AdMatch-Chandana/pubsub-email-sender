@@ -22,11 +22,16 @@ exports.SendEmail = (event, context) => {
     }
   ));
 
+  logger.warn(context)
+  logger.error(event.data)
+
 
   const decodedData = Buffer.from(event.data, 'base64').toString('utf-8');
   const parsedData = JSON.parse(decodedData);
 
-  if (parsedData.status != 'FAILED') {
+  logger.info(parsedData)
+
+  if (parsedData.state != 'FAILED') {
     return;
   }
 
