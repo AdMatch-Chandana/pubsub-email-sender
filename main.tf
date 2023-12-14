@@ -41,8 +41,6 @@ resource "google_cloudfunctions_function" "send_email_function" {
   }
   environment_variables = {
     "EMAIL_RECEIVERS" = join(",",var.email_receivers)
-    "SUBJECT" = var.email_subject
-    "CONTENT" = var.email_content
     "USER" = var.email_client_id
     "PASS" = var.email_client_password
   }

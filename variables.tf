@@ -26,11 +26,3 @@ variable "email_client_password" {
 variable "email_receivers" {
   type = list(string)
 }
-
-variable "email_subject" {
-  type = string
-}
-
-variable "email_content" {
-  type = string
-}
