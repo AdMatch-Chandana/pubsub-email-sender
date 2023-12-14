@@ -22,7 +22,7 @@ exports.SendEmail = (event, context) => {
     }
   ));
 
-  logger.warn(context)
+  logger.info(event)
   logger.error(event.data)
 
 
@@ -31,34 +31,56 @@ exports.SendEmail = (event, context) => {
 
   logger.info(parsedData)
 
-  if (parsedData.state != 'FAILED') {
+  const status = parsedData.state || parsedData.status;
+  let htmlContent;
+  if (status != 'FAILED') {
     return;
   }
 
   if (parsedData.destinationDatasetId) {
     pubsubType = "bqDataTransfer"
+    htmlContent = `
+    <p><b>Error Status:</b></p>
+    <p><b>Message:</b> ${parsedData.errorStatus.message}</p>
+    <p><b>Code:</b> ${parsedData.errorStatus.code}</p>
+  `
   } else {
     pubsubType = "s3ToGcs"
+    parsedData.errorBreakdowns.forEach((errorBreakdown, index) => {
+      // Add information about each error breakdown to the HTML content
+      htmlContent += `
+        <p><b>Error Breakdown ${index + 1}:</b></p>
+        <p><b>Error Count:</b> ${errorBreakdown.errorCount}</p>
+        <p><b>Error Code:</b> ${errorBreakdown.errorCode}</p>
+        
+        <!-- Loop through error log entries -->
+        <p><b>Error Log Entries:</b></p>
+        <ul>
+          ${errorBreakdown.errorLogEntries.map((logEntry, logIndex) => `
+            <li>
+              <p><b>Error Details:</b> ${logEntry.errorDetails.join(', ')}</p>
+              <p><b>URL:</b> ${logEntry.url}</p>
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    });
   }
 
   const transporter = nodemailer.createTransport({
     service: 'hotmail',
     auth: {
-      user: process.env.USER,
-      pass: process.env.PASS
+      user: "thilhani91senavirathne@outlook.com",
+      pass: "peraCHA123@"
     }
   });
 
   // Email content
   const mailOptions = {
-    from: process.env.USER,
+    from: "thilhani91senavirathne@outlook.com",
     to: process.env.EMAIL_RECEIVERS,
     subject: pubsubType === "bqDataTransfer" ? "Failed to Load data into bigquery" : "Failed to load data from S3 to GCS",
-    html: `
-    <p><b>Error Status:</b></p>
-    <p><b>Message:</b> ${parsedData.errorStatus.message}</p>
-    <p><b>Code:</b> ${parsedData.errorStatus.code}</p>
-  `
+    html: htmlContent
   };
 
   // Send email
