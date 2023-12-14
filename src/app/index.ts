@@ -7,100 +7,45 @@
  * 
  */
 import * as nodemailer from 'nodemailer';
-import { Logger, pino } from 'pino';
-import { gcpLogOptions } from 'pino-cloud-logging';
+import { logger } from './logger';
+import { EventData } from './types/function.model';
 
-interface ErrorLogEntry {
-  errorDetails: string[];
-  url: string;
-}
-
-interface ErrorBreakdown {
-  errorCount: number;
-  errorCode: string;
-  errorLogEntries: ErrorLogEntry[];
-}
-
-interface ParsedData {
-  state?: string;
-  status?: string;
-  destinationDatasetId?: string;
-  errorStatus: {
-    message: string;
-    code: string;
-  };
-  errorBreakdowns: ErrorBreakdown[];
+enum PubsubEventTypes {
+   "GCS_To_BQ" = 1,
+   "S3_to_GCS" = 2,
 }
 
 exports.SendEmail = (event: any, context: any) => {
 
-  let pubsubType = "";
+  let eventData: EventData;
+  try {
+    const decodedData = Buffer.from(event.data, 'base64').toString('utf-8');
+    eventData = JSON.parse(decodedData);
+  } catch (error) {
+    logger.error(error, 'Error decoding or parsing data:');
+    return;
+  }
 
-  const logger = pino(gcpLogOptions(
-    {
-      level: "info",
-      name: 'Sample Alert'
-    }
-  ));
-
-  logger.info(event);
-  logger.error(event.data);
-
-  const decodedData = Buffer.from(event.data, 'base64').toString('utf-8');
-  const parsedData: ParsedData = JSON.parse(decodedData);
-
-  logger.info(parsedData);
-
-  const status = parsedData.state || parsedData.status;
-  let htmlContent = "";
+  const status = eventData.state || eventData.status;
   if (status !== 'FAILED') {
     return;
   }
 
-  if (parsedData.destinationDatasetId) {
-    pubsubType = "bqDataTransfer";
-    htmlContent = `
-    <p><b>Error Status:</b></p>
-    <p><b>Message:</b> ${parsedData.errorStatus.message}</p>
-    <p><b>Code:</b> ${parsedData.errorStatus.code}</p>
-  `;
-  } else {
-    pubsubType = "s3ToGcs";
-    parsedData.errorBreakdowns.forEach((errorBreakdown, index) => {
-      // Add information about each error breakdown to the HTML content
-      htmlContent += `
-        <p><b>Error Breakdown ${index + 1}:</b></p>
-        <p><b>Error Count:</b> ${errorBreakdown.errorCount}</p>
-        <p><b>Error Code:</b> ${errorBreakdown.errorCode}</p>
-        
-        <!-- Loop through error log entries -->
-        <p><b>Error Log Entries:</b></p>
-        <ul>
-          ${errorBreakdown.errorLogEntries.map((logEntry, logIndex) => `
-            <li>
-              <p><b>Error Details:</b> ${logEntry.errorDetails.join(', ')}</p>
-              <p><b>URL:</b> ${logEntry.url}</p>
-            </li>
-          `).join('')}
-        </ul>
-      `;
-    });
-  }
-
+  const pubsubType = getEventType(eventData);
   const transporter = nodemailer.createTransport({
     service: 'hotmail',
     auth: {
-      user: "thilhani91senavirathne@outlook.com",
-      pass: "peraCHA123@"
+      user: process.env.EMAIL_CLIENT_ID as string,
+      pass: process.env.EMAIL_CLIENT_PASSWORD as string
     }
   });
 
   // Email content
   const mailOptions: nodemailer.SendMailOptions = {
-    from: "thilhani91senavirathne@outlook.com",
+    from: process.env.EMAIL_CLIENT_ID as string,
     to: process.env.EMAIL_RECEIVERS as string,
-    subject: pubsubType === "bqDataTransfer" ? "Failed to Load data into bigquery" : "Failed to load data from S3 to GCS",
-    html: htmlContent
+    subject: pubsubType === PubsubEventTypes.GCS_To_BQ ? "BigQuery Data Load Failure" : "S3 to GCS Data Transfer Failure",
+    html: getErrorContent(eventData, pubsubType)
   };
 
   // Send email
@@ -111,4 +56,42 @@ exports.SendEmail = (event: any, context: any) => {
       console.log('Email sent: ' + info.response);
     }
   });
+};
+
+const getErrorContent = (event: EventData, eventType: PubsubEventTypes): string => {
+  if(eventType === PubsubEventTypes.GCS_To_BQ){
+    return `
+    <p><b>Error Status:</b></p>
+    <p><b>Message:</b> ${event.errorStatus.message}</p>
+    <p><b>Code:</b> ${event.errorStatus.code}</p>
+  `;
+  }
+  let errorContent = "";
+  event.errorBreakdowns.forEach((errorBreakdown, index) => {
+    // Add information about each error breakdown to the HTML content
+    errorContent += `
+      <p><b>Error Breakdown ${index + 1}:</b></p>
+      <p><b>Error Count:</b> ${errorBreakdown.errorCount}</p>
+      <p><b>Error Code:</b> ${errorBreakdown.errorCode}</p>
+      
+      <!-- Loop through error log entries -->
+      <p><b>Error Log Entries:</b></p>
+      <ul>
+        ${errorBreakdown.errorLogEntries.map((logEntry, _) => `
+          <li>
+            <p><b>Error Details:</b> ${logEntry.errorDetails.join(', ')}</p>
+            <p><b>URL:</b> ${logEntry.url}</p>
+          </li>
+        `).join('')}
+      </ul>
+    `;
+  });
+  return errorContent;
+}
+
+const getEventType = (event: EventData): PubsubEventTypes => {
+  if (event.destinationDatasetId) {
+    return PubsubEventTypes.GCS_To_BQ;
+  }
+  return PubsubEventTypes.S3_to_GCS;
 };
